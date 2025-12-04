@@ -54,7 +54,7 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/your-username/vocab-flashcards.git
+git clone https://github.com/qinliang200409-cmd/vocab-flashcards.git
 cd vocab-flashcards
 
 # 安装依赖
@@ -328,8 +328,8 @@ npm run test:coverage
 ## 👨‍💻 作者
 
 **Your Name**
-- GitHub: [@your-username](https://github.com/your-username)
-- Email: your.email@example.com
+- GitHub: [qinliang200409-cmd](https://github.com/qinliang200409-cmd)
+- Email: qinliang200409@gmail.com
 
 ---
 
@@ -346,7 +346,7 @@ npm run test:coverage
 
 遇到问题？
 - 查看 [常见问题](DEPLOYMENT.md#常见问题)
-- 提交 [Issue](https://github.com/your-username/vocab-flashcards/issues)
+- 提交 [Issue](https://github.com/qinliang200409-cmd/vocab-flashcards/issues)
 - 联系作者
 
 ---
