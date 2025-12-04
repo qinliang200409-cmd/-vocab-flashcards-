@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100;
+    @apply min-h-screen;
+    @apply font-sans;
+  }
+}
+
+@layer components {
+  .card-container {
+    @apply perspective-1000;
+  }
+  
+  .card {
+    @apply relative w-full h-full;
+    @apply transition-transform duration-500;
+    @apply transform-style-3d;
+  }
+  
+  .card.flipped {
+    @apply rotate-y-180;
+  }
+  
+  .card-face {
+    @apply absolute w-full h-full;
+    @apply backface-hidden;
+    @apply rounded-2xl shadow-xl;
+    @apply flex flex-col items-center justify-center;
+    @apply p-8;
+  }
+  
+  .card-front {
+    @apply bg-white dark:bg-gray-800;
+  }
+  
+  .card-back {
+    @apply bg-gradient-to-br from-blue-50 to-indigo-50;
+    @apply dark:from-gray-800 dark:to-gray-700;
+    @apply rotate-y-180;
+  }
+  
+  .status-btn {
+    @apply px-6 py-3 rounded-lg font-medium;
+    @apply transition-all duration-200;
+    @apply hover:scale-105 active:scale-95;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  }
+  
+  .status-known {
+    @apply bg-known text-white;
+    @apply hover:bg-green-600;
+    @apply focus:ring-known;
+  }
+  
+  .status-fuzzy {
+    @apply bg-fuzzy text-white;
+    @apply hover:bg-amber-600;
+    @apply focus:ring-fuzzy;
+  }
+  
+  .status-unknown {
+    @apply bg-unknown text-white;
+    @apply hover:bg-red-600;
+    @apply focus:ring-unknown;
+  }
+}
+
+@layer utilities {
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  
+  .transform-style-3d {
+    transform-style: preserve-3d;
+  }
+  
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+  
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+}
