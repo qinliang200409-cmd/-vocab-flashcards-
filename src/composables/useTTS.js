@@ -1,11 +1,42 @@
 import { ref } from 'vue'
 
-export function useTTS() {
-  const isSpeaking = ref(false)
-  const isSupported = ref('speechSynthesis' in window)
-  let speakTimeout = null
-  let currentUtterance = null
+// Shared state across all useTTS instances (singleton pattern)
+const isSpeaking = ref(false)
+const isSupported = ref('speechSynthesis' in window)
+let speakTimeout = null
+let currentUtterance = null
 
+/**
+ * Detect language from text content
+ * @param {string} text - Text to analyze
+ * @returns {string} - Language code (e.g., 'ja-JP', 'zh-CN', 'en-US')
+ */
+function detectLanguage(text) {
+  if (!text) return 'en-US'
+  
+  // Japanese: Hiragana, Katakana, Kanji (CJK Unified Ideographs)
+  const japaneseRegex = /[\u3040-\u309F\u30A0-\u30FF]/
+  if (japaneseRegex.test(text)) {
+    return 'ja-JP'
+  }
+  
+  // Chinese: CJK characters (but not Japanese kana)
+  const chineseRegex = /[\u4E00-\u9FFF]/
+  if (chineseRegex.test(text) && !japaneseRegex.test(text)) {
+    return 'zh-CN'
+  }
+  
+  // Korean: Hangul
+  const koreanRegex = /[\uAC00-\uD7AF\u1100-\u11FF]/
+  if (koreanRegex.test(text)) {
+    return 'ko-KR'
+  }
+  
+  // Default to English for Latin characters
+  return 'en-US'
+}
+
+export function useTTS() {
   const speak = (text, options = {}) => {
     if (!isSupported.value) {
       console.warn('Speech Synthesis API is not supported in this browser')
@@ -36,9 +67,19 @@ export function useTTS() {
         const utterance = new SpeechSynthesisUtterance(text)
         currentUtterance = utterance
         
-        // Default options
-        utterance.lang = options.lang || 'en-US'
-        utterance.rate = options.rate || 0.9
+        // Auto-detect language if not specified
+        const detectedLang = detectLanguage(text)
+        utterance.lang = options.lang || detectedLang
+        
+        // Adjust rate based on language (Japanese is typically spoken slower)
+        let defaultRate = 0.9
+        if (utterance.lang.startsWith('ja')) {
+          defaultRate = 0.8
+        } else if (utterance.lang.startsWith('zh')) {
+          defaultRate = 0.85
+        }
+        
+        utterance.rate = options.rate || defaultRate
         utterance.pitch = options.pitch || 1
         utterance.volume = options.volume || 1
 

@@ -23,7 +23,7 @@
             <!-- TTS Button -->
             <TTSButton 
               v-if="word"
-              :word="word.word"
+              :word="textToSpeak"
               class="mx-auto"
             />
             
@@ -82,7 +82,7 @@
 </template>
 
 <script setup>
-import { watch, onMounted, onUnmounted } from 'vue'
+import { computed, watch, onMounted, onUnmounted } from 'vue'
 import { useCardDeck } from '@/composables/useCardDeck'
 import { useTTS } from '@/composables/useTTS'
 import { useStorage } from '@/composables/useStorage'
@@ -101,6 +101,19 @@ const { cardRef, isFlipped, cardStyle, flip, resetFlip, setSwipeCallbacks } = us
 const { speak } = useTTS()
 const { data } = useStorage()
 
+// Determine which field to use for TTS based on language
+const textToSpeak = computed(() => {
+  if (!props.word) return ''
+  
+  // Check if phonetic field contains Japanese characters
+  const japaneseRegex = /[\u3040-\u309F\u30A0-\u30FF]/
+  if (props.word.phonetic && japaneseRegex.test(props.word.phonetic)) {
+    return props.word.phonetic
+  }
+  
+  return props.word.word
+})
+
 // Set up swipe callbacks
 setSwipeCallbacks(
   () => emit('next'),
@@ -110,7 +123,7 @@ setSwipeCallbacks(
 // Auto-play pronunciation when word changes
 watch(() => props.word, (newWord) => {
   if (newWord && data.value.settings.autoPlay) {
-    speak(newWord.word)
+    speak(textToSpeak.value)
   }
   resetFlip()
 }, { immediate: true })

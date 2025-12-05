@@ -1,10 +1,10 @@
 <template>
   <button
     @click.stop="playSound"
-    :disabled="!isSupported"
+    :disabled="!isSupported || isSpeaking"
     class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-500 hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed text-white transition-all duration-200 hover:scale-110 active:scale-95"
     :class="{ 'animate-pulse': isSpeaking }"
-    :title="isSupported ? '点击发音' : '浏览器不支持语音合成'"
+    :title="isSpeaking ? '正在播放...' : (isSupported ? '点击发音' : '浏览器不支持语音合成')"
   >
     <svg
       v-if="!isSpeaking"

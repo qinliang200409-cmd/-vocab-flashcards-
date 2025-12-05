@@ -7,6 +7,7 @@ import './assets/styles/main.css'
 import Home from './views/Home.vue'
 import Review from './views/Review.vue'
 import Settings from './views/Settings.vue'
+import Wordbooks from './views/Wordbooks.vue'
 
 // Create router
 const router = createRouter({
@@ -16,6 +17,11 @@ const router = createRouter({
       path: '/',
       name: 'Home',
       component: Home
+    },
+    {
+      path: '/wordbooks',
+      name: 'Wordbooks',
+      component: Wordbooks
     },
     {
       path: '/review',

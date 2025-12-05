@@ -1,8 +1,17 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center p-4">
-    <div class="max-w-md w-full space-y-8">
+  <div class="min-h-screen flex flex-col items-center justify-center p-4">
+    <!-- Review Amount Selector Modal -->
+    <div v-if="showAmountSelector" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+      <ReviewAmountSelector
+        :max-words="activeWordbook?.stats?.total || 0"
+        @confirm="startReviewWithAmount"
+        @cancel="showAmountSelector = false"
+      />
+    </div>
+
+    <div class="max-w-md w-full space-y-6">
       <!-- Header -->
-      <div class="text-center">
+      <div class="text-center mb-4">
         <h1 class="text-4xl font-bold text-gray-900 dark:text-white mb-2">
           单词快速复习
         </h1>
@@ -11,240 +20,252 @@
         </p>
       </div>
 
-      <!-- Wordbook Selector -->
-      <WordbookSelector />
+      <!-- Active Wordbook Card -->
+      <div v-if="activeWordbook" class="bg-blue-600 rounded-2xl shadow-xl p-6 text-white relative overflow-hidden transition-all hover:shadow-2xl hover:scale-[1.01] cursor-pointer" @click="startReview">
+        <div class="absolute -top-4 -right-4 p-4 opacity-10 rotate-12">
+          <span class="text-9xl">📚</span>
+        </div>
+        <div class="relative z-10">
+            <div class="text-blue-100 text-sm font-medium mb-1 flex justify-between items-center">
+              <span>当前正在学习</span>
+              <span class="bg-blue-500/30 px-2 py-0.5 rounded text-xs">点击继续</span>
+            </div>
+            <h2 class="text-2xl font-bold mb-4 truncate pr-8">{{ activeWordbook.name }}</h2>
+            
+            <div class="flex items-end gap-4 mb-2">
+                 <div class="text-4xl font-bold">{{ calculateProgress(activeWordbook) }}%</div>
+                 <div class="text-blue-100 mb-1.5 text-sm">已掌握 ({{ activeWordbook.stats.known }}/{{ activeWordbook.stats.total }})</div>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div class="w-full bg-blue-900/30 rounded-full h-2 mb-4 overflow-hidden backdrop-blur-sm">
+                <div class="bg-white h-full rounded-full transition-all duration-500" :style="{ width: `${calculateProgress(activeWordbook)}%` }"></div>
+            </div>
+            
+            <div class="flex justify-between text-xs text-blue-100 font-medium">
+                <span>待复习: {{ activeWordbook.stats.notReviewed }}</span>
+                <span>上次学习: {{ formatDate(activeWordbook.updatedAt) }}</span>
+            </div>
+        </div>
+      </div>
+      
+      <!-- No Active Wordbook State -->
+       <div v-else class="bg-gray-50 dark:bg-gray-800 rounded-2xl p-8 text-center border-2 border-dashed border-gray-300 dark:border-gray-700">
+          <div class="text-4xl mb-3">📭</div>
+          <p class="text-gray-500 dark:text-gray-400 mb-4 font-medium">还没有选择词库</p>
+          <button @click="router.push('/wordbooks')" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors">
+            创建或选择词库
+          </button>
+       </div>
 
       <!-- Main Actions -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 space-y-4">
-        <!-- Import CSV -->
-        <div>
-          <label 
-            for="csv-upload" 
-            class="block w-full px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-center cursor-pointer transition-colors"
-          >
-            📁 导入CSV单词库
-          </label>
-          <input
-            id="csv-upload"
-            type="file"
-            accept=".csv"
-            class="hidden"
-            @change="handleFileUpload"
-          />
-        </div>
-
-        <!-- Use Sample Data -->
-        <button
-          @click="useSampleData"
-          class="w-full px-6 py-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
-        >
-          📚 使用示例词库
-        </button>
-
-        <!-- Random Words Section -->
-        <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
-          <p class="text-sm text-gray-600 dark:text-gray-400 mb-2 text-center">
-            🎲 随机复习当前词库
-          </p>
-          <p class="text-xs text-gray-500 dark:text-gray-500 mb-3 text-center">
-            从当前词库中随机选择单词进行复习
-          </p>
-          <div class="grid grid-cols-2 gap-3">
-            <button
+      <div class="space-y-3">
+         <!-- Start Review Button with Amount Selection -->
+         <button 
+            v-if="activeWordbook"
+            @click="showAmountSelector = true"
+            class="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold text-lg shadow-lg shadow-blue-600/20 transition-all transform hover:scale-[1.02] flex items-center justify-center gap-2"
+         >
+            <span>▶️</span> 开始复习
+         </button>
+         
+         <!-- Random Review -->
+         <div class="grid grid-cols-2 gap-3">
+             <button
               @click="reviewRandomWords(50)"
-              class="px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
-              :disabled="!getActiveWordbook"
+              class="px-4 py-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border border-gray-200 dark:border-gray-700 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
+              :disabled="!activeWordbook"
             >
-              随机50个
+              🎲 随机50词
             </button>
             <button
               @click="reviewRandomWords(100)"
-              class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
-              :disabled="!getActiveWordbook"
+              class="px-4 py-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border border-gray-200 dark:border-gray-700 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shadow-sm"
+              :disabled="!activeWordbook"
             >
-              随机100个
+              🎲 随机100词
             </button>
-          </div>
-          <p v-if="!getActiveWordbook" class="text-xs text-orange-600 dark:text-orange-400 mt-2 text-center">
-            请先创建或选择一个词库
-          </p>
-        </div>
-
-        <!-- Settings -->
-        <button
-          @click="goToSettings"
-          class="w-full px-6 py-4 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors"
-        >
-          ⚙️ 设置
-        </button>
-
-        <!-- Error Message -->
-        <div v-if="error" class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
-          <p class="font-semibold mb-1">❌ 导入失败</p>
-          <p>{{ error }}</p>
-        </div>
-
-        <!-- Loading with Progress -->
-        <div v-if="isLoading" class="text-center text-gray-600 dark:text-gray-400">
-          <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-2"></div>
-          <p>加载中... {{ progress }}%</p>
-          <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mt-2">
-            <div 
-              class="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              :style="{ width: `${progress}%` }"
-            ></div>
-          </div>
-        </div>
+         </div>
+      </div>
+      
+      <!-- Secondary Actions Grid -->
+      <div class="grid grid-cols-2 gap-3">
+          <button
+            @click="router.push('/wordbooks')"
+            class="px-4 py-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border border-gray-200 dark:border-gray-700 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
+          >
+            <span>📚</span> 词库管理
+          </button>
+          
+          <button
+            @click="router.push('/settings')"
+             class="px-4 py-3 bg-white dark:bg-gray-800 text-gray-700 dark:text-white border border-gray-200 dark:border-gray-700 rounded-xl font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
+          >
+             <span>⚙️</span> 设置
+          </button>
       </div>
 
-      <!-- Instructions -->
-      <div class="bg-blue-50 dark:bg-gray-800 rounded-lg p-4 text-sm text-gray-700 dark:text-gray-300">
-        <h3 class="font-semibold mb-2">💡 使用说明：</h3>
-        <ul class="space-y-1.5 list-none">
-          <li>📚 <strong>词库管理：</strong>创建多个词库分类学习</li>
-          <li>🎲 <strong>随机抽取：</strong>从1800+高频词中抽取单词到当前词库</li>
-          <li>📁 <strong>CSV格式：</strong>word,phonetic,chinese,example</li>
-          <li>⌨️ <strong>快捷键：</strong>空格翻转，1/2/3标记，Z撤销</li>
-        </ul>
-      </div>
+       <!-- Import/Sample (Collapsible) -->
+       <div class="text-center pt-4">
+            <button 
+              @click="showImportOptions = !showImportOptions" 
+              class="text-sm text-gray-500 hover:text-blue-600 dark:text-gray-400 transition-colors flex items-center justify-center gap-1 mx-auto"
+            >
+                {{ showImportOptions ? '收起更多选项' : '更多选项 (导入/示例)' }}
+                <span :class="{ 'rotate-180': showImportOptions }" class="transform transition-transform text-xs">▼</span>
+            </button>
+            
+            <div v-show="showImportOptions" class="mt-4 space-y-3 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 transition-all">
+                 <label 
+                    class="block w-full py-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-white rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors text-sm font-medium shadow-sm"
+                  >
+                    📁 导入CSV文件
+                    <input type="file" accept=".csv" class="hidden" @change="handleFileUpload" />
+                  </label>
+                  
+                  <button
+                    @click="useSampleData"
+                    class="w-full py-3 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-white rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors text-sm font-medium shadow-sm"
+                  >
+                    📚 创建示例词库
+                  </button>
+            </div>
+       </div>
+
+      <!-- Loading/Error Feedback -->
+       <div v-if="isLoading" class="fixed inset-0 bg-black/20 flex items-center justify-center z-50 backdrop-blur-sm">
+            <div class="bg-white dark:bg-gray-800 p-6 rounded-xl flex flex-col items-center gap-3 shadow-2xl min-w-[200px]">
+                 <div class="animate-spin rounded-full h-10 w-10 border-4 border-blue-600 border-t-transparent"></div>
+                 <div class="text-center">
+                    <p class="text-gray-900 dark:text-white font-medium">处理中...</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">{{ progress }}%</p>
+                 </div>
+            </div>
+       </div>
+       
+       <div v-if="error" class="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white dark:bg-gray-800 border-l-4 border-red-500 text-gray-700 dark:text-white px-6 py-4 rounded-lg shadow-2xl z-50 flex items-center gap-3 min-w-[300px] animate-bounce-in">
+          <div class="text-red-500 text-xl">❌</div>
+          <div>
+            <div class="font-bold">操作失败</div>
+            <div class="text-sm opacity-90">{{ error }}</div>
+          </div>
+       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCSVImport } from '@/composables/useCSVImport'
 import { useWordbook } from '@/composables/useWordbook'
-import WordbookSelector from '@/components/WordbookSelector.vue'
+import { prioritizeCards } from '@/utils/reviewAlgorithm'
+import { useStorage } from '@/composables/useStorage'
+import ReviewAmountSelector from '@/components/ReviewAmountSelector.vue'
 
 const router = useRouter()
 const { importFromFile, importFromText, isLoading, error, progress } = useCSVImport()
-const { getActiveWordbook, getWordbooksList, createWordbook, addWordsToWordbook } = useWordbook()
+const { getActiveWordbook, getWordbooksList, createWordbook } = useWordbook()
+const { data } = useStorage()
+
+const activeWordbook = getActiveWordbook
+const showImportOptions = ref(false)
+const showAmountSelector = ref(false)
 
 const handleFileUpload = async (event) => {
   const file = event.target.files[0]
   if (!file) return
 
-  console.log('File selected:', file.name)
-  
   try {
     const words = await importFromFile(file)
-    console.log('Parsed words:', words)
     
     if (words && words.length > 0) {
-      // Always create a NEW wordbook for imported CSV
       const wordbookName = file.name.replace('.csv', '')
-      const wordbookId = createWordbook(wordbookName, words)
-      console.log('Created new wordbook:', wordbookId)
-      
-      // Store words in sessionStorage for immediate review
-      sessionStorage.setItem('reviewWords', JSON.stringify(words))
-      console.log('Words stored in sessionStorage')
-      router.push('/review')
-    } else {
-      console.error('No words parsed from file')
+      createWordbook(wordbookName, words)
+      router.push('/wordbooks')
     }
   } catch (err) {
     console.error('Error handling file upload:', err)
+    alert('导入失败: ' + err.message)
   }
   
-  // Reset file input to allow re-selecting the same file
   event.target.value = ''
 }
 
 const useSampleData = () => {
-  // Sample data for demonstration
   const sampleWords = [
-    {
-      id: 'apple-0',
-      word: 'apple',
-      phonetic: '/ˈæpl/',
-      chinese: '苹果',
-      example: 'An apple a day keeps the doctor away.'
-    },
-    {
-      id: 'abandon-1',
-      word: 'abandon',
-      phonetic: '/əˈbændən/',
-      chinese: '放弃',
-      example: 'Never abandon your dreams.'
-    },
-    {
-      id: 'ability-2',
-      word: 'ability',
-      phonetic: '/əˈbɪləti/',
-      chinese: '能力',
-      example: 'She has the ability to succeed.'
-    },
-    {
-      id: 'about-3',
-      word: 'about',
-      phonetic: '/əˈbaʊt/',
-      chinese: '关于',
-      example: 'Tell me about your day.'
-    },
-    {
-      id: 'above-4',
-      word: 'above',
-      phonetic: '/əˈbʌv/',
-      chinese: '在...上面',
-      example: 'The stars are above us.'
-    }
+    { id: 'apple-0', word: 'apple', phonetic: '/ˈæpl/', chinese: '苹果', example: 'An apple a day keeps the doctor away.' },
+    { id: 'abandon-1', word: 'abandon', phonetic: '/əˈbændən/', chinese: '放弃', example: 'Never abandon your dreams.' },
+    { id: 'ability-2', word: 'ability', phonetic: '/əˈbɪləti/', chinese: '能力', example: 'She has the ability to succeed.' },
+    { id: 'about-3', word: 'about', phonetic: '/əˈbaʊt/', chinese: '关于', example: 'Tell me about your day.' },
+    { id: 'above-4', word: 'above', phonetic: '/əˈbʌv/', chinese: '在...上面', example: 'The stars are above us.' }
   ]
 
-  // Always create a new wordbook for sample data
-  createWordbook('示例词库', sampleWords)
-
-  sessionStorage.setItem('reviewWords', JSON.stringify(sampleWords))
-  router.push('/review')
+  try {
+    createWordbook('示例词库', sampleWords)
+    router.push('/wordbooks')
+  } catch (error) {
+    alert(error.message)
+  }
 }
 
-// Load and create the "高频单词" wordbook on component mount
+// Load frequent words if needed
 const loadFrequentWordsWordbook = async () => {
   try {
-    const response = await fetch('/frequently-used-words.csv')
-    if (!response.ok) {
-      console.error('Failed to load frequently-used-words.csv')
-      return
-    }
+    const existingWordbooks = Object.values(getWordbooksList.value || {})
+    const frequentWordsExists = existingWordbooks.some(wb => wb.name === '高频单词')
     
-    const csvText = await response.text()
-    const allWords = await importFromText(csvText)
-    
-    if (allWords && allWords.length > 0) {
-      // Check if "高频单词" wordbook already exists
-      const existingWordbooks = Object.values(getWordbooksList.value || {})
-      const frequentWordsExists = existingWordbooks.some(wb => wb.name === '高频单词')
-      
-      if (!frequentWordsExists) {
-        createWordbook('高频单词', allWords)
-        console.log('Created "高频单词" wordbook with', allWords.length, 'words')
+    if (!frequentWordsExists) {
+      const response = await fetch('/frequently-used-words.csv')
+      if (response.ok) {
+        const csvText = await response.text()
+        const allWords = await importFromText(csvText)
+        if (allWords && allWords.length > 0) {
+          createWordbook('高频单词', allWords)
+        }
       }
     }
   } catch (err) {
-    console.error('Error loading frequent words wordbook:', err)
+    console.error('Error loading frequent words:', err)
   }
 }
 
-// Random review from current active wordbook
-const reviewRandomWords = (count) => {
-  // IMPORTANT: Re-fetch active wordbook to ensure we have the latest one
-  const activeWordbook = getActiveWordbook.value
+const startReview = () => {
+  if (!activeWordbook.value) return
+  sessionStorage.removeItem('reviewWords')
+  router.push('/review')
+}
+
+const startReviewWithAmount = (amount) => {
+  if (!activeWordbook.value || !activeWordbook.value.words.length) {
+    error.value = '当前词库为空'
+    setTimeout(() => error.value = '', 3000)
+    return
+  }
+
+  // Use review algorithm to prioritize words
+  const allWords = activeWordbook.value.words
+  const prioritized = prioritizeCards(allWords, data.value.words)
   
-  if (!activeWordbook || !activeWordbook.words || activeWordbook.words.length === 0) {
-    error.value = '当前词库为空，请先添加单词'
-    setTimeout(() => {
-      error.value = ''
-    }, 3000)
+  // Select the requested amount of highest priority words
+  const selectedWords = prioritized.slice(0, Math.min(amount, allWords.length))
+  
+  // Store in session storage for Review.vue
+  sessionStorage.setItem('reviewWords', JSON.stringify(selectedWords))
+  sessionStorage.setItem('reviewSessionId', Date.now().toString())
+  
+  showAmountSelector.value = false
+  router.push('/review')
+}
+
+const reviewRandomWords = (count) => {
+  if (!activeWordbook.value || !activeWordbook.value.words.length) {
+    error.value = '当前词库为空'
+    setTimeout(() => error.value = '', 3000)
     return
   }
   
-  // Create a deep copy of the words array to avoid reference issues
-  const allWords = JSON.parse(JSON.stringify(activeWordbook.words))
-  console.log(`Current wordbook "${activeWordbook.name}" has ${allWords.length} words`)
-  
-  // Randomly select the specified number of words using Fisher-Yates shuffle
+  const allWords = JSON.parse(JSON.stringify(activeWordbook.value.words))
   const shuffled = [...allWords]
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -252,20 +273,26 @@ const reviewRandomWords = (count) => {
   }
   const selectedWords = shuffled.slice(0, Math.min(count, allWords.length))
   
-  console.log(`Selected ${selectedWords.length} random words from "${activeWordbook.name}"`)
-  console.log('Sample words:', selectedWords.slice(0, 3).map(w => w.word))
-  
-  // Store in sessionStorage and navigate to review
   sessionStorage.setItem('reviewWords', JSON.stringify(selectedWords))
-  // Add a timestamp to force Review page to reload with new data
   sessionStorage.setItem('reviewSessionId', Date.now().toString())
   router.push('/review')
 }
 
-// Load frequent words wordbook when component mounts
-loadFrequentWordsWordbook()
-
-const goToSettings = () => {
-  router.push('/settings')
+const calculateProgress = (wb) => {
+  if (!wb || !wb.stats || !wb.stats.total) return 0
+  return Math.round((wb.stats.known / wb.stats.total) * 100)
 }
+
+const formatDate = (timestamp) => {
+  if (!timestamp) return '从未'
+  const date = new Date(timestamp)
+  const now = new Date()
+  const diff = now - date
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24))
+  if (days === 0) return '今天'
+  if (days === 1) return '昨天'
+  return `${days}天前`
+}
+
+loadFrequentWordsWordbook()
 </script>

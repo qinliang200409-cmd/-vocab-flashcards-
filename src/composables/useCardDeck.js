@@ -15,10 +15,10 @@ export function useCardDeck() {
     onSwipeEnd: (e, dir) => {
       swipeOffset.value = 0
       
-      if (dir === 'left') {
-        onSwipeRight()
-      } else if (dir === 'right') {
-        onSwipeLeft()
+      if (dir === 'left' && onSwipeLeft.value) {
+        onSwipeLeft.value()
+      } else if (dir === 'right' && onSwipeRight.value) {
+        onSwipeRight.value()
       }
     }
   })
